@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -95,7 +96,6 @@ func CreatePostEndpoint(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 	var post Posts
 	json.NewDecoder(request.Body).Decode(&post)
-	fmt.Println(request.Body, "\n", post)
 	post.Timestamp = time.Now()
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -133,14 +133,18 @@ func GetPostEndpoint(response http.ResponseWriter, request *http.Request) {
 func GetPostsByUsersEndpoint(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 	params := mux.Vars(request)
-	// id, _ := primitive.ObjectIDFromHex(params["id"])
 	var id = params["id"]
 	var posts []*Posts
 	var filter = Posts{UserID: id}
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 	client, _ := mongo.Connect(context.TODO(), clientOptions)
 	collection := client.Database("instagram").Collection("posts")
+	var page, _ = strconv.Atoi(request.URL.Query().Get("page"))
+	var perPage int64 = 5
+	fmt.Println(page, perPage)
 	findOptions := options.Find()
+	findOptions.SetLimit(perPage)
+	findOptions.SetSkip((int64(page)) * perPage)
 	cur, err := collection.Find(context.TODO(), filter, findOptions)
 	if err != nil {
 		log.Fatal(err)
