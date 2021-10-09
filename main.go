@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Users struct {
@@ -29,6 +30,24 @@ type Posts struct {
 	Timestamp time.Time          `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
 }
 
+func encrypt(pwd []byte) string {
+	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost)
+	if err != nil {
+		log.Println(err)
+	}
+	return string(hash)
+}
+
+func comparePasswords(hashedPwd string, plainPwd []byte) bool {
+	byteHash := []byte(hashedPwd)
+	err := bcrypt.CompareHashAndPassword(byteHash, plainPwd)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	return true
+}
+
 var client *mongo.Client
 
 func CreateUserEndpoint(response http.ResponseWriter, request *http.Request) {
@@ -36,13 +55,14 @@ func CreateUserEndpoint(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 	var users Users
 	json.NewDecoder(request.Body).Decode(&users)
-	fmt.Println(users)
+	// var temp = users.Password
+	users.Password = encrypt([]byte(users.Password))
+	// fmt.Println(comparePasswords(users.Password, []byte(temp)))
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, err := mongo.Connect(context.TODO(), clientOptions)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	client, err := mongo.Connect(ctx, clientOptions)
 	collection := client.Database("instagram").Collection("users")
-	fmt.Println(users)
-	result, err := collection.InsertOne(context.TODO(), users)
-	fmt.Println(result.InsertedID)
+	result, err := collection.InsertOne(ctx, users)
 	if err != nil {
 		log.Fatal(err)
 		fmt.Println(err.Error())
