@@ -77,10 +77,11 @@ func GetUserEndpoint(response http.ResponseWriter, request *http.Request) {
 	id, _ := primitive.ObjectIDFromHex(params["id"])
 	var result Users
 	var filter = Users{ID: id}
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, _ := mongo.Connect(context.TODO(), clientOptions)
+	client, _ := mongo.Connect(ctx, clientOptions)
 	collection := client.Database("instagram").Collection("users")
-	err := collection.FindOne(context.TODO(), filter).Decode(&result)
+	err := collection.FindOne(ctx, filter).Decode(&result)
 	if err != nil {
 		fmt.Println("error")
 		response.WriteHeader(http.StatusInternalServerError)
@@ -97,13 +98,10 @@ func CreatePostEndpoint(response http.ResponseWriter, request *http.Request) {
 	fmt.Println(request.Body, "\n", post)
 	post.Timestamp = time.Now()
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, _ := mongo.Connect(context.TODO(), clientOptions)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	client, _ := mongo.Connect(ctx, clientOptions)
 	collection := client.Database("instagram").Collection("posts")
-	// ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	// result, _ := collection.InsertOne(ctx, post)
-	fmt.Println(post)
-	result, err := collection.InsertOne(context.TODO(), post)
-	fmt.Println(result.InsertedID)
+	result, err := collection.InsertOne(ctx, post)
 	if err != nil {
 		log.Fatal(err)
 		fmt.Println(err.Error())
@@ -119,9 +117,10 @@ func GetPostEndpoint(response http.ResponseWriter, request *http.Request) {
 	var post Posts
 	var filter = Posts{ID: id}
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, _ := mongo.Connect(context.TODO(), clientOptions)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	client, _ := mongo.Connect(ctx, clientOptions)
 	collection := client.Database("instagram").Collection("posts")
-	err := collection.FindOne(context.TODO(), filter).Decode(&post)
+	err := collection.FindOne(ctx, filter).Decode(&post)
 	if err != nil {
 		fmt.Println("error")
 		response.WriteHeader(http.StatusInternalServerError)
